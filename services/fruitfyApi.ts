@@ -1,11 +1,17 @@
 /**
  * Serviço de integração com a API PIX da Fruitfy
  * Documentação: https://fruitfy.io
+ * 
+ * Em produção (Vercel): a chamada vai para /api/pix/charge (serverless function)
+ *   → as credenciais ficam seguras no servidor (env vars do Vercel)
+ * Em desenvolvimento (Vite): a chamada vai para /api/pix/charge (proxy do Vite)
+ *   → o proxy repassa para https://api.fruitfy.io com as credenciais
  */
 
-const API_TOKEN = import.meta.env.VITE_FRUITFY_TOKEN;
-const STORE_ID = import.meta.env.VITE_FRUITFY_STORE_ID;
+const API_TOKEN = import.meta.env.VITE_FRUITFY_TOKEN || '';
+const STORE_ID = import.meta.env.VITE_FRUITFY_STORE_ID || '';
 const PRODUCT_ID = import.meta.env.VITE_FRUITFY_PRODUCT_ID || 'produto-loja';
+const IS_DEV = import.meta.env.DEV;
 
 export interface FruitfyChargeRequest {
   name: string;
@@ -55,15 +61,22 @@ export async function createPixCharge(
     ],
   };
 
-  const response = await fetch('/fruitfy-api/api/pix/charge', {
+  // Em dev, envia headers de auth (proxy do Vite repassa para a API)
+  // Em produção, a serverless function /api/pix/charge cuida da autenticação
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Accept-Language': 'pt_BR',
+  };
+
+  if (IS_DEV) {
+    headers['Authorization'] = `Bearer ${API_TOKEN}`;
+    headers['Store-Id'] = STORE_ID;
+  }
+
+  const response = await fetch('/api/pix/charge', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${API_TOKEN}`,
-      'Store-Id': STORE_ID,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Accept-Language': 'pt_BR',
-    },
+    headers,
     body: JSON.stringify(body),
   });
 
