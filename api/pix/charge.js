@@ -1,12 +1,10 @@
 /**
  * Vercel Serverless Function - Proxy para API PIX Fruitfy
  * 
- * As credenciais ficam seguras no servidor (env vars do Vercel),
- * nunca expostas no código do cliente.
- * 
  * Env vars necessárias no Vercel Dashboard:
- *   FRUITFY_TOKEN   - Token de autenticação da API
- *   FRUITFY_STORE_ID - ID da loja na Fruitfy
+ *   FRUITFY_TOKEN      - Token de autenticação da API
+ *   FRUITFY_STORE_ID   - ID da loja na Fruitfy
+ *   FRUITFY_PRODUCT_ID - ID do produto (UUID)
  */
 export default async function handler(req, res) {
   // CORS
@@ -27,7 +25,6 @@ export default async function handler(req, res) {
   const PRODUCT_ID = process.env.FRUITFY_PRODUCT_ID;
 
   if (!API_TOKEN || !STORE_ID) {
-    console.error('Missing env vars: FRUITFY_TOKEN or FRUITFY_STORE_ID');
     return res.status(500).json({
       success: false,
       message: 'Erro de configuração do servidor de pagamentos.',
@@ -35,14 +32,32 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Garante que os items usem o PRODUCT_ID correto (UUID) do servidor
-    const body = { ...req.body };
-    if (PRODUCT_ID && body.items && Array.isArray(body.items)) {
-      body.items = body.items.map(item => ({ ...item, id: PRODUCT_ID }));
+    // Parse do body - pode vir como objeto ou string dependendo do Vercel
+    let clientData;
+    if (typeof req.body === 'string') {
+      clientData = JSON.parse(req.body);
+    } else {
+      clientData = req.body || {};
     }
 
-    const requestBody = JSON.stringify(body);
-    console.log('Sending to Fruitfy:', requestBody);
+    // Monta o body da requisição, sempre usando o PRODUCT_ID do servidor
+    const fruitfyBody = {
+      name: clientData.name || '',
+      email: clientData.email || '',
+      phone: clientData.phone || '',
+      cpf: clientData.cpf || '',
+      amount: clientData.amount || 0,
+      items: [
+        {
+          id: PRODUCT_ID || clientData.items?.[0]?.id || '',
+          value: clientData.amount || clientData.items?.[0]?.value || 0,
+          quantity: 1,
+        },
+      ],
+    };
+
+    const requestBody = JSON.stringify(fruitfyBody);
+    console.log('[PIX] Request to Fruitfy:', requestBody);
 
     const response = await fetch('https://api.fruitfy.io/api/pix/charge', {
       method: 'POST',
@@ -57,22 +72,21 @@ export default async function handler(req, res) {
     });
 
     const responseText = await response.text();
-    console.log('Fruitfy response status:', response.status, 'body:', responseText);
+    console.log('[PIX] Fruitfy status:', response.status, 'response:', responseText.substring(0, 500));
 
     let data;
     try {
       data = JSON.parse(responseText);
     } catch {
-      data = { success: false, message: responseText || 'Resposta inválida do servidor' };
+      data = { success: false, message: 'Resposta inválida do servidor de pagamentos.' };
     }
 
     return res.status(response.status).json(data);
   } catch (error) {
-    console.error('Fruitfy API error:', error);
+    console.error('[PIX] Error:', error);
     return res.status(500).json({
       success: false,
       message: 'Erro de conexão com o servidor de pagamentos. Tente novamente.',
-      debug: String(error),
     });
   }
 }
