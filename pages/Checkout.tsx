@@ -21,6 +21,18 @@ import {
 
 type CheckoutStep = 'form' | 'payment_processing' | 'pix_screen' | 'success' | 'payment_error';
 
+// === Validação de E-mail ===
+const validateEmail = (email: string): boolean => {
+  // Exige domínio com pelo menos 2 caracteres após o ponto (ex: .com, .br)
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+};
+
+// === Validação de Telefone ===
+const validatePhone = (phone: string): boolean => {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 10 && digits.length <= 11;
+};
+
 // === Validação de CPF (dígitos verificadores) ===
 const validateCPF = (cpf: string): boolean => {
   const digits = cpf.replace(/\D/g, '');
@@ -195,6 +207,18 @@ const Checkout: React.FC = () => {
 
   const handleProcessOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim() || formData.name.trim().length < 3) {
+        setApiError("Por favor, informe seu nome completo.");
+        return;
+    }
+    if (!validateEmail(formData.email)) {
+        setApiError("Por favor, informe um e-mail válido (ex: nome@email.com).");
+        return;
+    }
+    if (!validatePhone(formData.phone)) {
+        setApiError("Por favor, informe um telefone válido com DDD.");
+        return;
+    }
     if (!validateCPF(formData.cpf)) {
         setCpfError('CPF inválido. Verifique os números digitados.');
         setApiError("Por favor, informe um CPF válido.");
