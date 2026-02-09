@@ -24,6 +24,7 @@ export default async function handler(req, res) {
 
   const API_TOKEN = process.env.FRUITFY_TOKEN;
   const STORE_ID = process.env.FRUITFY_STORE_ID;
+  const PRODUCT_ID = process.env.FRUITFY_PRODUCT_ID;
 
   if (!API_TOKEN || !STORE_ID) {
     console.error('Missing env vars: FRUITFY_TOKEN or FRUITFY_STORE_ID');
@@ -34,6 +35,12 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Garante que os items usem o PRODUCT_ID correto (UUID) do servidor
+    const body = { ...req.body };
+    if (PRODUCT_ID && body.items && Array.isArray(body.items)) {
+      body.items = body.items.map(item => ({ ...item, id: PRODUCT_ID }));
+    }
+
     const response = await fetch('https://api.fruitfy.io/api/pix/charge', {
       method: 'POST',
       headers: {
@@ -43,7 +50,7 @@ export default async function handler(req, res) {
         'Accept': 'application/json',
         'Accept-Language': 'pt_BR',
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify(body),
     });
 
     const data = await response.json();
