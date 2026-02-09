@@ -1,0 +1,16 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Proxy para a API Fruitfy (substitui o proxy do Vite em produção)
+[[redirects]]
+  from = "/fruitfy-api/*"
+  to = "https://api.fruitfy.io/:splat"
+  status = 200
+  force = true
+
+# Fallback SPA - redireciona todas as rotas para index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

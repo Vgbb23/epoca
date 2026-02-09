@@ -1,0 +1,5 @@
+{
+  "name": "Dermo-Pharmacy Store - La Roche Style",
+  "description": "A high-end dermo-cosmetic e-commerce application inspired by La Roche-Posay, featuring a clean clinical aesthetic, simulated checkout flow, and special pricing logic. No real external payment APIs are connected.",
+  "requestFramePermissions": []
+}
