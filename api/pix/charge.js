@@ -41,6 +41,9 @@ export default async function handler(req, res) {
       body.items = body.items.map(item => ({ ...item, id: PRODUCT_ID }));
     }
 
+    const requestBody = JSON.stringify(body);
+    console.log('Sending to Fruitfy:', requestBody);
+
     const response = await fetch('https://api.fruitfy.io/api/pix/charge', {
       method: 'POST',
       headers: {
@@ -50,16 +53,26 @@ export default async function handler(req, res) {
         'Accept': 'application/json',
         'Accept-Language': 'pt_BR',
       },
-      body: JSON.stringify(body),
+      body: requestBody,
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
+    console.log('Fruitfy response status:', response.status, 'body:', responseText);
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      data = { success: false, message: responseText || 'Resposta inválida do servidor' };
+    }
+
     return res.status(response.status).json(data);
   } catch (error) {
     console.error('Fruitfy API error:', error);
     return res.status(500).json({
       success: false,
       message: 'Erro de conexão com o servidor de pagamentos. Tente novamente.',
+      debug: String(error),
     });
   }
 }
